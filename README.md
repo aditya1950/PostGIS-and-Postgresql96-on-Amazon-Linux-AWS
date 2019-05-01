@@ -53,7 +53,7 @@ host    all             all             ::1/128                 md5
 Enter username for each user and associate IPs or make it open to all 0.0.0.0/0
 Enter a specific IP X.X.X.X/32 to only allow connection from the exact IP
 
-Now, we need to update PostgreSQL to enable remote connections to the database. At the command line enter:
+Now, we need to update PostgreSQL to enable remote connections to the database.
 
 sudo vim /var/lib/pgsql96/data/postgresql.conf
 
@@ -90,4 +90,86 @@ CREATE USER username NOSUPERUSER;
 ALTER USER username WITH PASSWORD '$otheruserpassword';
 
 Exit from Postgres with \q. Your setup is complete now and is ready to be connected remotely.
+Postgresql96 install done
+```
+### PostGIS installation
+
+First, we install some build tools and the GEOS and PROJ libraries. Then we install PostGIS. Once installed, we will update our libraries, so the server knows where to find them. Finally, we create a temp database for PostGIS.
+
+```
+Install build tools
+sudo yum install gcc make gcc-c++ libtool libxml2-devel
+
+Make a directory for PostGIS
+cd /home/ec2-user/
+mkdir postgis
+cd postgis
+
+//Install GEOS - 3.7.1
+wget http://download.osgeo.org/geos/geos-3.7.1.tar.bz2
+tar xjvf geos-3.7.1.tar.bz2
+cd geos-3.7.1
+./configure
+make
+sudo make install
+
+//Install PROJ - 6.0.0 and datumgrid-1.7 
+//Find latest build here  - https://proj4.org/install.html#install
+//This build requires sqlite3 headers - if the configure does not work
+//Install sqlite3 from the website - get the latest version
+//Follow this installation - https://www.tutorialspoint.com/sqlite/sqlite_installation.htm
+//SQLite3 install
+//cd into the folder you want to download
+
+wget https://www.sqlite.org/2019/sqlite-autoconf-3280000.tar.gz
+$tar xvfz sqlite-autoconf-3280000.tar.gz
+$cd sqlite-autoconf-3280000
+$./configure --prefix=/usr/local
+$make
+$make install
+
+//set the PKG_CONFIG_PATH to find the sqlite3.pc file
+export PKG_CONFIG_PATH=/your/path/name
+//In my case - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+//Install PROJ - 6.0.0 and datumgrid-1.7
+cd /home/ec2-user/postgis/
+wget http://download.osgeo.org/proj/proj-6.0.0.tar.gz
+wget http://download.osgeo.org/proj/proj-datumgrid-1.7.zip
+tar zxvf proj-6.0.0.tar.gz
+cd proj-6.0.0/data
+unzip ../../proj-datumgrid-1.7.zip
+cd ..
+./configure  
+make
+sudo make install
+
+//Install GDAL - 2.4.1
+cd /home/ec2-user/postgis
+wget http://download.osgeo.org/gdal/gdal-2.4.1.tar.gz
+gzip -d gdal-2.4.1.tar.gz
+tar -xvf gdal-2.4.1.tar
+cd gdal-2.4.1
+./configure
+make
+sudo make install
+
+//Install postgis-2.5.2
+//Download the latest tar file from https://postgis.net/source/
+//postgis-2.5.2.tar
+
+cd /home/ec2-user/postgis/
+wget http://download.osgeo.org/postgis/source/postgis-2.5.2.tar.gz
+tar zxvf postgis-2.5.2.tar.gz 
+cd postgis-2.5.2
+./configure --with-geosconfig=/usr/local/bin/geos-config
+make
+sudo make install
+
+Create a temporary database to test
+
+createdb -U postgres temp_postgis
+createlang -U postgres plpgsql temp_postgis
+psql -U postgres -d temp_postgis < /usr/share/pgsql96/contrib/postgis-2.5/postgis.sql
+psql -U postgres -d temp_postgis < /usr/share/pgsql96/contrib/postgis-2.5/spatial_ref_sys.sql
 ```
